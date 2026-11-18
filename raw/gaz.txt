@@ -1,0 +1,8 @@
+[out:json][timeout:600];
+(
+ nwr["place"~"^(city|town|village|hamlet|suburb|neighbourhood|quarter|townland|locality|island|islet|isolated_dwelling)$"]["name"](51.25,-10.9,55.5,-5.25);
+ nwr["natural"~"^(peak|bay|beach|cape|valley|ridge|saddle|cliff)$"]["name"](51.25,-10.9,55.5,-5.25);
+ nwr["waterway"~"^(river)$"]["name"](51.25,-10.9,55.5,-5.25);
+ nwr["natural"="water"]["name"](51.25,-10.9,55.5,-5.25);
+);
+out center tags qt;

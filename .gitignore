@@ -1,0 +1,21 @@
+# build output (mac/build.sh) and the npm toolchain used to vendor map libraries
+build/
+tools/npm/
+node_modules/
+
+# raw OpenStreetMap / Overpass downloads — regenerate with the queries in raw/*.txt
+raw/*.json
+raw/*.geojson
+raw/old_*
+
+# logs and audit outputs from the data tools
+tools/*.log
+tools/*.err
+tools/*.json
+
+# the offline data itself (libraries, map, terrain) lives in ~/Library/Application Support/Lastbook Ireland
+*.zim
+*.pmtiles
+
+.DS_Store
+raw/*.log

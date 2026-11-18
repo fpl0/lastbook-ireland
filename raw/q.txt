@@ -1,0 +1,13 @@
+[out:json][timeout:300];
+(
+ nwr["amenity"~"^(hospital|clinic|doctors|pharmacy|police|fire_station|drinking_water|fuel|shelter|community_centre|townhall|place_of_worship|school|veterinary|water_point|toilets)$"](51.3,-10.8,55.45,-5.3);
+ nwr["emergency"~"^(defibrillator|ambulance_station|lifeboat_station|assembly_point|water_tank|fire_hydrant)$"](51.3,-10.8,55.45,-5.3);
+ nwr["shop"~"^(supermarket|convenience|hardware|doityourself|chemist|outdoor|farm|agrarian)$"](51.3,-10.8,55.45,-5.3);
+ nwr["natural"="spring"](51.3,-10.8,55.45,-5.3);
+ nwr["man_made"~"^(water_well|water_tap)$"](51.3,-10.8,55.45,-5.3);
+ nwr["tourism"~"^(alpine_hut|wilderness_hut|camp_site|hostel)$"](51.3,-10.8,55.45,-5.3);
+ node["place"~"^(city|town|village|hamlet)$"](51.3,-10.8,55.45,-5.3);
+ nwr["seamark:type"="coastguard_station"](51.3,-10.8,55.45,-5.3);
+ nwr["natural"="peak"]["name"](51.3,-10.8,55.45,-5.3);
+);
+out center tags;

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reader</title>
+<style>
+:root { --text:#161a16; --text-2:#4a524a; --line:#e3e6e0; --accent:#0d7a57; --bg:#fbfaf7; }
+:root[data-theme="dark"] { --text:#e9eee8; --text-2:#aab3a9; --line:#2a312b; --accent:#45cf98; --bg:#0d1110; color-scheme: dark; }
+h1, h2, h3 { font-family: "New York", ui-serif, Georgia, serif; }
+.src { color: var(--accent) !important; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-weight: 500 !important; font-size: 11px !important; letter-spacing: .1em !important; }
+body { margin:0; background:var(--bg); color:var(--text); font:17px/1.65 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+main { max-width: 760px; margin: 0 auto; padding: 40px 28px 80px; }
+.src { font-size: 12.5px; letter-spacing:.07em; text-transform:uppercase; color: var(--text-2); font-weight:600; }
+.orig { font-size: 13px; color: var(--text-2); margin: 6px 0 26px; word-break: break-all; }
+h1 { font: 700 32px/1.2 -apple-system, "SF Pro Display", system-ui, sans-serif; letter-spacing:-.02em; margin: 6px 0 4px; }
+h2 { font-size: 22px; margin: 34px 0 10px; letter-spacing:-.01em; } h3 { font-size: 18px; margin: 26px 0 8px; }
+a { color: var(--accent); } ul, ol { padding-left: 22px; } li { margin: 5px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; } td, th { border-bottom: 1px solid var(--line); padding: 8px; text-align: left; vertical-align: top; }
+details { border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; margin: 10px 0; } summary { font-weight: 600; cursor: pointer; }
+</style></head><body><main id="m"></main>
+<script>
+try { document.documentElement.dataset.theme = parent.document.documentElement.dataset.theme || "light"; } catch {}
+const p = new URLSearchParams(location.search), src = p.get("src") || "";
+const esc = s => String(s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+fetch(src).then(r => r.text()).then(async body => {
+  let orig = "";
+  try { const idx = await fetch("/guidance/index.json").then(r => r.json()); const it = idx.find(x => "/guidance/" + x.file === src); if (it) orig = it.url; } catch {}
+  const hasH1 = /<h1>/i.test(body);
+  document.title = p.get("t") || "Guidance";
+  document.getElementById("m").innerHTML = `<div class="src">${esc(p.get("s"))} · saved for offline use</div>${hasH1 ? "" : `<h1>${esc(p.get("t"))}</h1>`}${body}${orig ? `<p class="orig">Original: ${esc(orig)}</p>` : ""}`;
+  document.querySelectorAll("a[href^='http']").forEach(a => a.target = "_blank");
+}).catch(() => document.getElementById("m").textContent = "Could not open this page.");
+</script></body></html>

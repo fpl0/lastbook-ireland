@@ -1,0 +1,12 @@
+[out:json][timeout:600];
+area["ISO3166-1"="IE"][admin_level=2]->.ie;
+area["ISO3166-2"="GB-NIR"]->.ni;
+( nwr["place"~"^(city|town|village|hamlet|suburb|quarter|neighbourhood|townland|locality|island|islet|isolated_dwelling|farm)$"]["name"](area.ie);
+  nwr["place"~"^(city|town|village|hamlet|suburb|quarter|neighbourhood|townland|locality|island|islet|isolated_dwelling|farm)$"]["name"](area.ni);
+  nwr["natural"~"^(peak|hill|bay|beach|cape|valley|ridge|saddle|cliff|wood)$"]["name"](51.25,-11.0,55.6,-5.2);
+  nwr["water"~"^(lake|reservoir|lough)$"]["name"](51.25,-11.0,55.6,-5.2);
+  nwr["landuse"="forest"]["name"](51.25,-11.0,55.6,-5.2);
+  nwr["leisure"~"^(park|nature_reserve)$"]["name"](51.25,-11.0,55.6,-5.2);
+  nwr["boundary"="national_park"]["name"](51.25,-11.0,55.6,-5.2);
+);
+out center tags;

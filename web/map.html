@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lastbook Map</title>
+<link rel="stylesheet" href="map/vendor/maplibre-gl.css">
+<link rel="stylesheet" href="map/map.css">
+<style>html, body { margin: 0; height: 100%; background: #e5e7eb; } @media (prefers-color-scheme: dark) { html, body { background: #0f172a; } }</style>
+<script src="geo.js"></script>
+<script src="map/vendor/pmtiles.js"></script>
+<script src="map/vendor/basemaps.js"></script>
+<script src="map/vendor/mlcontour.js"></script>
+</head>
+<body>
+<div class="lbm" id="map">
+  <div class="lbm-canvas"></div>
+  <div class="lbm-search lbm-glass">
+    <label>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="search" placeholder="Town, townland, hill, grid ref…" autocomplete="off" spellcheck="false" aria-label="Search the map">
+      <kbd>/</kbd>
+    </label>
+    <ul class="lbm-results" hidden></ul>
+  </div>
+  <div class="lbm-tools">
+    <button class="lbm-glass lbm-tool-help" title="Nearest A&amp;E, AED, pharmacy, Garda…"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Nearest help</span></button>
+    <button class="lbm-glass lbm-tool-layers" title="Layers"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg><span>Layers</span></button>
+    <button class="lbm-glass lbm-tool-measure" title="Measure distance, ascent and walking time"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 17 17 3l4 4L7 21z"/><path d="m7 13 2 2m1-5 2 2m1-5 2 2"/></svg><span>Measure</span></button>
+  </div>
+  <aside class="lbm-panel lbm-glass" aria-label="Map layers"></aside>
+  <div class="lbm-measure lbm-glass" hidden></div>
+  <div class="lbm-coords lbm-glass"></div>
+</div>
+<script type="module">
+  import { initMap } from "./map/map.js";
+  initMap(document.getElementById("map")).catch(e => { console.error(e); document.body.insertAdjacentHTML("beforeend", `<pre style="position:fixed;bottom:0;left:0;right:0;background:#fee;color:#900;margin:0;padding:12px">${e.stack || e}</pre>`); });
+</script>
+</body>
+</html>
