@@ -41,7 +41,11 @@ async function renderLibrary(params) {
   if (!v.dataset.built) v.innerHTML = `<div class="page"><div class="eyebrow">Library</div><h1>Opening the libraries…</h1><div class="skeleton" style="width:60%;margin-top:24px"></div><div class="skeleton" style="width:40%"></div></div>`;
   const books = (await LB.loadBooks()).filter(b => b.book);
   books.sort((a, b) => SHELF.findIndex(s => a.name.startsWith(s[0])) - SHELF.findIndex(s => b.name.startsWith(s[0])));
-  if (!books.length) { delete v.dataset.built; setTimeout(() => location.hash.startsWith("#/library") && renderLibrary(params), 1500); return; }
+  if (!books.length) {
+    const st = await LB.status;
+    if (!st.library) { v.dataset.built = ""; v.innerHTML = `<div class="page"><div class="eyebrow">Library</div><h1>Offline libraries</h1>${LB.noDataCard("The offline library", st.dataDir)}</div>`; return; }
+    v.dataset.built = ""; setTimeout(() => location.hash.startsWith("#/library") && renderLibrary(params), 1500); return;
+  }
   if (!v.dataset.built) {
     v.dataset.built = 1;
     v.innerHTML = `<div class="page">

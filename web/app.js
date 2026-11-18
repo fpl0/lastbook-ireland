@@ -79,11 +79,15 @@ setTheme(store.get("theme", matchMedia("(prefers-color-scheme: dark)").matches ?
 $("#themeBtn").onclick = () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
 
 /* ---------------- status ---------------- */
-fetch("api/status").then(r => r.json()).then(s => {
-  const ok = s.kiwix && s.docs;
+LB.status = fetch("api/status").then(r => r.json()).catch(() => ({}));
+LB.status.then(s => {
+  const ok = s.kiwix && s.docs && s.library && s.map;
   $("#status").classList.toggle("warn", !ok);
-  $("#statusText").textContent = ok ? "Offline-ready · all libraries loaded" : (s.kiwix ? "Indexing manuals…" : "Library engine not running");
-}).catch(() => { $("#status").classList.add("warn"); $("#statusText").textContent = "Static mode"; });
+  $("#statusText").textContent = ok ? "Offline-ready · all libraries loaded" : (!s.library || !s.map ? "Offline data not installed" : s.kiwix ? "Indexing manuals…" : "Library engine not running");
+});
+// shown wherever a feature needs the downloaded offline data and it isn't there yet
+LB.noDataCard = (what, dir) => `<div class="help-empty" style="margin:24px 0"><span class="hi">${icon("info")}</span>
+  <div><b>${esc(what)} isn't installed yet</b><span>Lastbook's offline data (~32 GB: libraries, map, terrain) is downloaded once, with internet, by running <code>tools/setup.sh</code> from the project folder. It's stored in <code>${esc(dir || "~/Library/Application Support/Lastbook Ireland")}</code>. Guides, the toolkit and emergency numbers work without it.</span></div></div>`;
 
 /* ---------------- router ---------------- */
 const views = ["now", "map", "guides", "library", "tools", "read"];

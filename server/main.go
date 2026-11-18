@@ -250,6 +250,10 @@ func startKiwix() (string, *exec.Cmd) {
 		bin = filepath.Join(*dataDir, "bin", "kiwix-serve")
 	}
 	lib := filepath.Join(*dataDir, "library.xml")
+	if _, err := os.Stat(lib); err != nil {
+		log.Printf("no library installed at %s — run tools/setup.sh", lib)
+		return "", nil
+	}
 	if _, err := os.Stat(bin); err != nil {
 		log.Printf("kiwix-serve not found at %s — library disabled", bin)
 		return "", nil
@@ -266,12 +270,26 @@ func startKiwix() (string, *exec.Cmd) {
 		return "", nil
 	}
 	target := fmt.Sprintf("http://127.0.0.1:%d", kp)
-	for i := 0; i < 100; i++ {
+	exited := make(chan struct{})
+	go func() { cmd.Wait(); close(exited) }()
+	up := false
+	for i := 0; i < 200 && !up; i++ {
+		select {
+		case <-exited:
+			log.Printf("kiwix-serve exited — library disabled")
+			return "", nil
+		default:
+		}
 		if c, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", kp), 100*time.Millisecond); err == nil {
 			c.Close()
-			break
+			up = true
+		} else {
+			time.Sleep(50 * time.Millisecond)
 		}
-		time.Sleep(50 * time.Millisecond)
+	}
+	if !up {
+		log.Printf("kiwix-serve did not start — library disabled")
+		return "", nil
 	}
 	log.Printf("kiwix-serve on %s", target)
 	return target, cmd
@@ -391,7 +409,9 @@ func main() {
 		w.WriteHeader(204)
 	})
 	mux.HandleFunc("/api/status", func(w http.ResponseWriter, r *http.Request) {
-		jsonOut(w, map[string]any{"kiwix": kt != "", "docs": idx != nil && len(idx.docs) > 0})
+		exists := func(rel string) bool { _, err := os.Stat(filepath.Join(*dataDir, rel)); return err == nil }
+		jsonOut(w, map[string]any{"kiwix": kt != "", "docs": idx != nil && len(idx.docs) > 0,
+			"library": exists("library.xml"), "map": exists("map/ireland.pmtiles"), "dataDir": *dataDir})
 	})
 	dataMine := static("/data/", filepath.Join(*dataDir, "data"), "no-cache")
 	dataRoot := static("/data/", *dataDir, "max-age=86400")
