@@ -1,6 +1,6 @@
-# raw/gaz.json + raw/pois.json (OpenStreetMap via Overpass)  ->  <LIB>/data/{places.json, pois.geojson}
+# raw/gaz.json + raw/pois.json (OpenStreetMap via Overpass)  ->  web/appdata/{places.json, pois.geojson} (shipped inside the app)
 import json, os, re
-LIB = os.path.expanduser("~/Library/Application Support/Lastbook Ireland/data")
+LIB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "web", "appdata")   # shipped inside the app
 os.makedirs(LIB, exist_ok=True)
 HERE = os.path.dirname(os.path.abspath(__file__)) + "/../raw/"
 

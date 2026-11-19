@@ -41,11 +41,11 @@ const LB = window.LB = {
   loc: store.get("loc", null),   // {lat, lon, label, src}
   pois: null, places: null, books: null,
   async loadPois() {
-    if (!this.pois) this.pois = fetch("data/pois.geojson").then(r => r.json()).catch(() => ({ features: [] }));
+    if (!this.pois) this.pois = fetch("appdata/pois.geojson").then(r => r.json()).catch(() => ({ features: [] }));
     return this.pois;
   },
   async loadPlaces() {
-    if (!this.places) this.places = fetch("data/places.json").then(r => r.json()).then(a => a.map(p => ({ n: p[0], k: p[1], lat: p[2], lon: p[3], ga: p[4], x: p[5], s: (p[0] + " " + p[4]).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "") }))).catch(() => []);
+    if (!this.places) this.places = fetch("appdata/places.json").then(r => r.json()).then(a => a.map(p => ({ n: p[0], k: p[1], lat: p[2], lon: p[3], ga: p[4], x: p[5], s: (p[0] + " " + p[4]).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "") }))).catch(() => []);
     return this.places;
   },
   async loadBooks() {
@@ -79,18 +79,27 @@ setTheme(store.get("theme", matchMedia("(prefers-color-scheme: dark)").matches ?
 $("#themeBtn").onclick = () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
 
 /* ---------------- status ---------------- */
-LB.status = fetch("api/status").then(r => r.json()).catch(() => ({}));
-LB.status.then(s => {
-  const ok = s.kiwix && s.docs && s.library && s.map;
-  $("#status").classList.toggle("warn", !ok);
-  $("#statusText").textContent = ok ? "Offline-ready · all libraries loaded" : (!s.library || !s.map ? "Offline data not installed" : s.kiwix ? "Indexing manuals…" : "Library engine not running");
-});
 // shown wherever a feature needs the downloaded offline data and it isn't there yet
-LB.noDataCard = (what, dir) => `<div class="help-empty" style="margin:24px 0"><span class="hi">${icon("info")}</span>
-  <div><b>${esc(what)} isn't installed yet</b><span>Lastbook's offline data (~32 GB: libraries, map, terrain) is downloaded once, with internet, by running <code>tools/setup.sh</code> from the project folder. It's stored in <code>${esc(dir || "~/Library/Application Support/Lastbook Ireland")}</code>. Guides, the toolkit and emergency numbers work without it.</span></div></div>`;
+LB.noDataCard = (what, dir) => `<div class="help-empty" style="margin:24px 0"><span class="hi">${icon("download")}</span>
+  <div><b>${esc(what)} isn't downloaded yet</b><span>Lastbook's map and libraries are downloaded once, while you have internet, and then work with no connection. Pick what you want — from a few hundred MB to the full ~32 GB. Guides, the toolkit and emergency numbers already work without it.</span></div>
+  <div class="acts"><a class="btn primary" href="#/setup">${icon("download")} Download offline data</a></div></div>`;
+// refresh status/catalogue after a download adds data (map & libraries come alive without a restart)
+LB.refreshStatus = () => {
+  LB.status = fetch("api/status").then(r => r.json()).catch(() => ({}));
+  LB.books = null;
+  LB.status.then(s => {
+    const ok = s.kiwix && s.docs && s.library && s.map;
+    $("#status").classList.toggle("warn", !ok);
+    $("#statusText").textContent = ok ? "Offline-ready · all libraries loaded" : (!s.library || !s.map ? "Offline data not installed" : s.kiwix ? "Indexing manuals…" : "Library engine not running");
+    $(".rail-dot").hidden = !!(s.library && s.map);
+  });
+  return LB.status;
+};
+LB.refreshStatus();
+$("#status").onclick = () => { if ($("#status").classList.contains("warn")) location.hash = "#/setup"; };
 
 /* ---------------- router ---------------- */
-const views = ["now", "map", "guides", "library", "tools", "read"];
+const views = ["now", "map", "guides", "library", "tools", "setup", "read"];
 function route() {
   const h = location.hash.slice(2) || "now";
   const [path, qs] = h.split("?");
@@ -137,6 +146,7 @@ function renderNow() {
         </div>
         <div class="card where" id="whereCard"></div>
       </div>
+      <div id="nowData"></div>
       <h2>Do this now</h2>
       <div class="quick">${QUICK.map(([id, t, ic, c]) => `<a class="${c}" href="#/guide/${id}"><span class="ic">${icon(ic)}</span>${esc(t)}</a>`).join("")}</div>
       <h2>Nearest help</h2>
@@ -148,6 +158,7 @@ function renderNow() {
     window.addEventListener("lb:loc", () => { renderNear(); renderSun(); });
   }
   renderNowWhere(); renderNear(); renderSun();
+  LB.status.then(s => { const d = $("#nowData"); if (d) d.innerHTML = s.library && s.map ? "" : LB.noDataCard(!s.map && !s.library ? "The offline map and libraries" : !s.map ? "The offline map" : "The offline library"); });
 }
 
 function renderGridChip() {

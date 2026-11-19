@@ -10,33 +10,29 @@ package main
 
 import (
 	"encoding/json"
-	"encoding/xml"
 	"flag"
 	"fmt"
 	"log"
 	"math"
 	"net"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 	"unicode"
 )
 
 var (
-	dataDir = flag.String("data", filepath.Join(os.Getenv("HOME"), "Library/Application Support/Lastbook Ireland"), "data folder")
-	webDir  = flag.String("web", "web", "web app folder")
-	port    = flag.Int("port", 0, "port (0 = any free port)")
-	kiwix   = flag.String("kiwix", "", "path to kiwix-serve (default: <data>/bin/kiwix-serve)")
-	portOut = flag.String("portfile", "", "write the chosen port to this file once listening")
+	dataDir   = flag.String("data", filepath.Join(os.Getenv("HOME"), "Library/Application Support/Lastbook Ireland"), "data folder")
+	webDir    = flag.String("web", "web", "web app folder")
+	port      = flag.Int("port", 0, "port (0 = any free port)")
+	kiwixPath = flag.String("kiwix", "", "path to kiwix-serve (default: <data>/bin/kiwix-serve)")
+	pdftext   = flag.String("pdftext", "", "path to the pdftext helper (default: next to this binary)")
+	portOut   = flag.String("portfile", "", "write the chosen port to this file once listening")
 )
 
 // ---------------------------------------------------------------- documents index
@@ -244,57 +240,6 @@ type opdsFeed struct {
 	} `xml:"entry"`
 }
 
-func startKiwix() (string, *exec.Cmd) {
-	bin := *kiwix
-	if bin == "" {
-		bin = filepath.Join(*dataDir, "bin", "kiwix-serve")
-	}
-	lib := filepath.Join(*dataDir, "library.xml")
-	if _, err := os.Stat(lib); err != nil {
-		log.Printf("no library installed at %s — run tools/setup.sh", lib)
-		return "", nil
-	}
-	if _, err := os.Stat(bin); err != nil {
-		log.Printf("kiwix-serve not found at %s — library disabled", bin)
-		return "", nil
-	}
-	l, _ := net.Listen("tcp", "127.0.0.1:0")
-	kp := l.Addr().(*net.TCPAddr).Port
-	l.Close()
-	cmd := exec.Command(bin, "--library", "--address", "127.0.0.1", "--port", fmt.Sprint(kp),
-		"--urlRootLocation", "/kiwix", "--nodatealiases", "--threads", "8", "--searchLimit", "50", lib)
-	cmd.Stdout, cmd.Stderr = os.Stderr, os.Stderr
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	if err := cmd.Start(); err != nil {
-		log.Printf("kiwix-serve: %v", err)
-		return "", nil
-	}
-	target := fmt.Sprintf("http://127.0.0.1:%d", kp)
-	exited := make(chan struct{})
-	go func() { cmd.Wait(); close(exited) }()
-	up := false
-	for i := 0; i < 200 && !up; i++ {
-		select {
-		case <-exited:
-			log.Printf("kiwix-serve exited — library disabled")
-			return "", nil
-		default:
-		}
-		if c, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", kp), 100*time.Millisecond); err == nil {
-			c.Close()
-			up = true
-		} else {
-			time.Sleep(50 * time.Millisecond)
-		}
-	}
-	if !up {
-		log.Printf("kiwix-serve did not start — library disabled")
-		return "", nil
-	}
-	log.Printf("kiwix-serve on %s", target)
-	return target, cmd
-}
-
 // ---------------------------------------------------------------- http
 
 func jsonOut(w http.ResponseWriter, v any) {
@@ -340,51 +285,21 @@ func static(prefix, dir string, cache string) http.Handler {
 func main() {
 	flag.Parse()
 	loadIndex()
-	kt, kcmd := startKiwix()
-	mux := http.NewServeMux()
-
-	var books []map[string]any
-	var booksMu sync.Mutex
-	if kt != "" {
-		ku, _ := url.Parse(kt)
-		proxy := httputil.NewSingleHostReverseProxy(ku)
-		proxy.ModifyResponse = func(r *http.Response) error {
-			r.Header.Del("Content-Security-Policy")
-			r.Header.Del("X-Frame-Options")
-			return nil
-		}
-		mux.Handle("/kiwix/", proxy)
-		mux.HandleFunc("/api/books", func(w http.ResponseWriter, r *http.Request) {
-			booksMu.Lock()
-			defer booksMu.Unlock()
-			if books == nil {
-				resp, err := http.Get(kt + "/kiwix/catalog/v2/entries?count=-1")
-				if err != nil {
-					http.Error(w, err.Error(), 502)
-					return
-				}
-				var f opdsFeed
-				xml.NewDecoder(resp.Body).Decode(&f)
-				resp.Body.Close()
-				books = []map[string]any{}
-				for _, e := range f.Entries {
-					b := map[string]any{"title": e.Title, "name": e.Name, "summary": e.Summary, "articles": e.Count, "media": e.Media, "tags": e.Tags, "category": e.Category}
-					for _, l := range e.Links {
-						switch {
-						case l.Type == "text/html":
-							b["href"] = l.Href
-							b["book"] = strings.TrimPrefix(l.Href, "/kiwix/content/")
-						case strings.Contains(l.Rel, "illustration"):
-							b["icon"] = l.Href
-						}
-					}
-					b["ftindex"] = strings.Contains(e.Tags, "_ftindex:yes")
-					books = append(books, b)
-				}
+	kiwix.restart()
+	pdftextBin = *pdftext
+	if pdftextBin == "" {
+		if exe, err := os.Executable(); err == nil {
+			if p := filepath.Join(filepath.Dir(exe), "pdftext"); isFile(p) {
+				pdftextBin = p
 			}
-			jsonOut(w, books)
-		})
+		}
 	}
+	setup.onLib = kiwix.restart
+	setup.onIndex = loadIndex
+	setup.init()
+	mux := http.NewServeMux()
+	kiwix.routes(mux)
+	setupRoutes(mux)
 	mux.HandleFunc("/api/docs", func(w http.ResponseWriter, r *http.Request) {
 		jsonOut(w, searchDocs(r.URL.Query().Get("q"), 40))
 	})
@@ -410,8 +325,8 @@ func main() {
 	})
 	mux.HandleFunc("/api/status", func(w http.ResponseWriter, r *http.Request) {
 		exists := func(rel string) bool { _, err := os.Stat(filepath.Join(*dataDir, rel)); return err == nil }
-		jsonOut(w, map[string]any{"kiwix": kt != "", "docs": idx != nil && len(idx.docs) > 0,
-			"library": exists("library.xml"), "map": exists("map/ireland.pmtiles"), "dataDir": *dataDir})
+		jsonOut(w, map[string]any{"kiwix": kiwix.target() != "", "docs": idx != nil && len(idx.docs) > 0, "setup": setup.snapshot()["running"],
+			"library": len(verifiedZims()) > 0, "map": exists("map/ireland.pmtiles"), "dataDir": *dataDir})
 	})
 	dataMine := static("/data/", filepath.Join(*dataDir, "data"), "no-cache")
 	dataRoot := static("/data/", *dataDir, "max-age=86400")
@@ -435,11 +350,7 @@ func main() {
 	if *portOut != "" {
 		os.WriteFile(*portOut, []byte(fmt.Sprint(p)), 0o644)
 	}
-	stop := func() {
-		if kcmd != nil && kcmd.Process != nil {
-			syscall.Kill(-kcmd.Process.Pid, syscall.SIGTERM)
-		}
-	}
+	stop := func() { kiwix.stop() }
 	go func() {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)

@@ -12,10 +12,13 @@ const el = document.getElementById("lbmap");
 async function ensure() {
   if (api) return api;
   const st = window.LB.status ? await window.LB.status : {};
+  let card = el.querySelector(".lbm-nodata");
   if (st.map === false) {   // map data not downloaded yet: explain instead of showing a blank canvas
-    el.innerHTML = `<div style="position:absolute;inset:0;overflow:auto;padding:24px 32px">${window.LB.noDataCard("The offline map", st.dataDir)}</div>`;
+    if (!card) { card = document.createElement("div"); card.className = "lbm-nodata"; el.append(card); }
+    card.innerHTML = window.LB.noDataCard("The offline map", st.dataDir);
     return null;
   }
+  if (card) card.remove();
   if (!starting) starting = initMap(el, { data: "/data/map/", hash: false, flavor: appFlavor() }).then(a => {
     api = a; window.LB.mapApi = a;
     polish(a.map);

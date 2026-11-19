@@ -50,7 +50,7 @@ async function renderLibrary(params) {
     v.dataset.built = 1;
     v.innerHTML = `<div class="page">
       <div class="page-head"><div><div class="eyebrow">Library</div><h1>${books.length} offline libraries · ${fmtCount(books.reduce((n, b) => n + (b.articles || 0), 0))} articles</h1>
-      <p class="lede">Encyclopedias, medical references, survival and field manuals, repair guides and official Irish guidance — all on this computer, searchable without a connection.</p></div></div>
+      <p class="lede">Encyclopedias, medical references, survival and field manuals, repair guides and official Irish guidance — all on this computer, searchable without a connection. <a href="#/setup">Add or update libraries →</a></p></div></div>
       <div class="lib-search"><input class="input" id="libQ" placeholder="Search every library — e.g. splint, diabetic emergency, solar panel wiring, potato blight"></div>
       <div id="libResults"></div>
       <div id="libHome"></div>

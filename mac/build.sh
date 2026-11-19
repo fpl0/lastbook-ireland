@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Builds "Lastbook Ireland.app" and installs it to /Applications.
 # The app bundles the UI, the offline engine (Go) and kiwix-serve; the big data lives in
-# ~/Library/Application Support/Lastbook Ireland (fill it with tools/fetch_*.sh / *.py).
+# ~/Library/Application Support/Lastbook Ireland (downloaded from inside the app: Set up offline data).
 set -e
 cd "$(dirname "$0")/.."
 LIB="$HOME/Library/Application Support/Lastbook Ireland"
@@ -14,16 +14,23 @@ if [[ -n "$UNIVERSAL" ]]; then
   lipo -create $T/server-arm64 $T/server-x86_64 -output "$APP/Contents/Resources/bin/lastbook-server"
   for a in arm64 x86_64; do
     swiftc -O -target $a-apple-macos13.0 -o $T/shell-$a mac/main.swift -framework AppKit -framework WebKit -framework CoreLocation
+    swiftc -O -target $a-apple-macos13.0 -o $T/pdftext-$a tools/pdftext.swift
     if [[ ! -x $T/kiwix-$a ]]; then
       curl -sSL "https://download.kiwix.org/release/kiwix-tools/kiwix-tools_macos-$a-3.8.2.tar.gz" | tar xz -C $T --strip-components=1 "kiwix-tools_macos-$a-3.8.2/kiwix-serve"
       mv $T/kiwix-serve $T/kiwix-$a
     fi
   done
   lipo -create $T/shell-arm64 $T/shell-x86_64 -output "$APP/Contents/MacOS/LastbookIreland"
+  lipo -create $T/pdftext-arm64 $T/pdftext-x86_64 -output "$APP/Contents/Resources/bin/pdftext"
   lipo -create $T/kiwix-arm64 $T/kiwix-x86_64 -output "$APP/Contents/Resources/bin/kiwix-serve"
 else
   (cd server && go build -trimpath -ldflags="-s -w" -o "../$APP/Contents/Resources/bin/lastbook-server" .)
   swiftc -O -o "$APP/Contents/MacOS/LastbookIreland" mac/main.swift -framework AppKit -framework WebKit -framework CoreLocation
+  swiftc -O -o "$APP/Contents/Resources/bin/pdftext" tools/pdftext.swift
+  if [[ ! -x "$LIB/bin/kiwix-serve" ]]; then   # fresh machine: fetch the Kiwix reader once
+    mkdir -p "$LIB/bin"
+    curl -sSL "https://download.kiwix.org/release/kiwix-tools/kiwix-tools_macos-$(uname -m)-3.8.2.tar.gz" | tar xz -C "$LIB/bin" --strip-components=1
+  fi
   cp "$LIB/bin/kiwix-serve" "$APP/Contents/Resources/bin/kiwix-serve"
 fi
 rsync -a --exclude map.html web/ "$APP/Contents/Resources/web/"
@@ -44,8 +51,8 @@ cat > "$APP/Contents/Info.plist" <<PL
 <key>CFBundleExecutable</key><string>LastbookIreland</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>2.0.0</string>
-<key>CFBundleVersion</key><string>2</string>
+<key>CFBundleShortVersionString</key><string>2.1.0</string>
+<key>CFBundleVersion</key><string>3</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>LSApplicationCategoryType</key><string>public.app-category.reference</string>
 <key>NSHighResolutionCapable</key><true/>

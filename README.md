@@ -7,7 +7,7 @@
 **An offline emergency and self-reliance companion for the island of Ireland.**<br>
 Maps, medical references, survival manuals, Wikipedia and a library for rebuilding — on your Mac, with no internet at all.
 
-[Download](https://github.com/fpl0/lastbook-ireland/releases/latest) · [Set up the offline data](#2-download-the-offline-data) · [How it works](#how-it-works) · [What's inside](#whats-inside)
+[Download](https://github.com/fpl0/lastbook-ireland/releases/latest) · [Download the offline data](#2-download-the-offline-data) · [How it works](#how-it-works) · [What's inside](#whats-inside)
 
 </div>
 
@@ -42,6 +42,7 @@ It is built to be **100% offline**: the app's web view refuses every network req
 | **Map** | Full OpenStreetMap vector map (light/dark/grey/paper styles, English or Irish labels), hillshade, contours, optional 3D terrain. Search 99,000 places — towns, townlands, peaks, lakes — or type a grid reference. Tap anywhere for grid refs, elevation and the nearest help. Measure distance, ascent and Naismith walking time. |
 | **Guides** | 29 field guides. Each starts with what to do, then links live into the encyclopedia articles and the exact pages of the survival and medical manuals. |
 | **Library** | All 25 libraries in four sections — *Emergency & medicine*, *Survival & preparedness*, *Rebuilding: skills, energy & science*, *General knowledge*. Full-text search across everything, page-level search inside 160 PDF manuals, native shelves for the document collections and CD3WD, bookmarks, and a reader that restyles articles to match the app in light and dark mode. |
+| **Data** | Download the offline data from inside the app: pick *Essentials* (~12 GB), *Everything* (~31 GB) or individual libraries, see free disk space, and watch each item arrive. Pause any time; interrupted downloads resume, even after quitting. |
 | **Toolkit** | Emergency kit checklist and household plan (saved on your Mac), coordinate converter, distance & bearing, bleach dosing for water, household food & water calculator, Morse code and an SOS screen flasher. |
 
 Press <kbd>⌘K</kbd> anywhere to search everything at once — places, guides, manuals and encyclopedias.
@@ -53,8 +54,8 @@ Lastbook has two parts: the **app** (small) and the **offline data** (large, dow
 ### Requirements
 
 - macOS 13 or later (Apple silicon or Intel)
-- ~35 GB of free disk space for the data
-- For the data download and for building from source: Xcode Command Line Tools (`xcode-select --install`), [Go](https://go.dev), Python 3, and [`pmtiles`](https://github.com/protomaps/go-pmtiles) (`brew install pmtiles`)
+- Disk space for the data you choose: ~12 GB for the essentials, ~31 GB for everything
+- An internet connection **once**, to download the data
 
 ### 1. Get the app
 
@@ -62,7 +63,30 @@ Lastbook has two parts: the **app** (small) and the **offline data** (large, dow
 
 The app is not notarised by Apple, so the first time you open it: right-click → **Open** → **Open**. (Or run `xattr -dr com.apple.quarantine "/Applications/Lastbook Ireland.app"`.)
 
-**Or build it yourself:**
+### 2. Download the offline data
+
+Do this **now, while you have internet** — it is what makes Lastbook useful in an emergency.
+
+Open Lastbook and click **Data** at the bottom of the sidebar (or *Download offline data* on any screen that needs it). Choose:
+
+- **Essentials (~12 GB)** — the map and terrain, every medical and survival library, the rebuilding libraries, the most-read Wikipedia articles and the official guidance; or
+- **Everything (~31 GB)** — adds iFixit, Wikibooks, Wikivoyage and the full LibreTexts science shelf; or
+- tick individual items.
+
+Then press **Download**. Everything goes into `~/Library/Application Support/Lastbook Ireland`:
+
+- libraries come from [download.kiwix.org](https://download.kiwix.org/zim/) and are each checked against their published SHA-256;
+- the map is cut to Ireland straight out of the latest [Protomaps](https://protomaps.com) planet build, and the terrain out of [Mapterhorn](https://mapterhorn.com) — only the tiles covering the island are fetched;
+- the official guidance is saved from gov.ie, nidirect, HSE, Met Éireann and the EPA;
+- the search index for the manuals is built on your Mac.
+
+Smaller items come first, so the essentials are usable early. You can keep using the app while it downloads, pause at any time, and if the download is interrupted (or you quit) it picks up where it stopped. Until the data is installed the guides, toolkit and emergency numbers already work, and the Map and Library offer the download.
+
+> **Tip:** the data folder is self-contained. Copy `~/Library/Application Support/Lastbook Ireland` to an external drive and you can set up another Mac with no internet at all.
+
+### Build from source
+
+Needs Xcode Command Line Tools (`xcode-select --install`) and [Go](https://go.dev).
 
 ```bash
 git clone https://github.com/fpl0/lastbook-ireland.git
@@ -70,23 +94,7 @@ cd lastbook-ireland
 ./mac/build.sh          # builds and installs /Applications/Lastbook Ireland.app
 ```
 
-For a release build that runs on both Apple silicon and Intel, use `UNIVERSAL=1 ./mac/build.sh`.
-
-`build.sh` bundles `kiwix-serve` from the data folder, so on a fresh machine run step 2 first (or at least its first step, which downloads the Kiwix tools).
-
-### 2. Download the offline data
-
-Do this **now, while you have internet** — it is what makes Lastbook useful in an emergency.
-
-```bash
-./tools/setup.sh
-```
-
-This downloads about 32 GB into `~/Library/Application Support/Lastbook Ireland` — the libraries (each checked against its published SHA-256), the map and terrain, OpenStreetMap places and help points, and the official guidance — then builds the search indexes. It takes one to two hours on a fast connection, and is safe to re-run: finished downloads are skipped and interrupted ones resume.
-
-Until the data is installed the app still opens: the guides, toolkit and emergency numbers work, and the Map and Library explain what's missing.
-
-> **Tip:** the data folder is self-contained. Copy `~/Library/Application Support/Lastbook Ireland` to an external drive and you can set up another Mac with no internet at all.
+`UNIVERSAL=1 ./mac/build.sh` makes a release build for both Apple silicon and Intel. Developers can also fetch the data from the command line with `./tools/setup.sh` (needs Python 3 and [`pmtiles`](https://github.com/protomaps/go-pmtiles)); it produces the same data folder as the in-app download.
 
 ## What's inside
 
@@ -131,7 +139,7 @@ flowchart LR
     subgraph App["Lastbook Ireland.app"]
         Shell["Native shell (Swift)<br/>WKWebView · location · offline-only rules"]
         UI["Web UI<br/>Now · Map · Guides · Library · Toolkit"]
-        Engine["lastbook-server (Go)<br/>static files · byte ranges · search index"]
+        Engine["lastbook-server (Go)<br/>static files · byte ranges · search index · downloader"]
         Kiwix["kiwix-serve<br/>ZIM reader + full-text search"]
     end
     Data[("~/Library/Application Support/<br/>Lastbook Ireland<br/>ZIMs · map · terrain · indexes")]
@@ -143,7 +151,7 @@ flowchart LR
 ```
 
 - **Native shell** (`mac/main.swift`) — starts the engine on a random local port and shows the UI in a WKWebView. A WebKit content rule list blocks every request that isn't to `127.0.0.1`, so nothing can reach the internet, even by accident. Location comes from CoreLocation through a small bridge (Macs locate via Wi-Fi, which may not work offline — tapping your position on the map always does).
-- **Engine** (`server/main.go`, Go standard library only) — serves the UI and the data folder with HTTP range support (the map is one PMTiles file read in ranges), proxies `kiwix-serve`, and keeps an in-memory page-level index of every manual and guidance document for full-text search.
+- **Engine** (`server/`, Go) — serves the UI and the data folder with HTTP range support (the map is one PMTiles file read in ranges), runs and proxies `kiwix-serve`, and keeps an in-memory page-level index of every manual and guidance document for full-text search. It is also the downloader behind the **Data** screen: resumable, checksum-verified library downloads; a PMTiles extractor that reads only Ireland's tiles from a remote planet archive with HTTP range requests; the guidance snapshot; and the index builder (PDF text via a small PDFKit helper, `pdftext`).
 - **Web UI** (`web/`) — plain JavaScript, no build step. The map is a [MapLibre GL](https://maplibre.org) module with PMTiles, Protomaps basemap styles and client-side contours.
 - **Reader** — library pages open inside the app and are restyled to match it (serif headings, the app's colours, Wikipedia's own night mode underneath in dark mode). Archived websites keep working links through their replay script, and their online-only search boxes are redirected to the offline search.
 
@@ -162,14 +170,16 @@ Latest results: **701 of 701** random pages and **204 of 204** manuals open offl
 
 ## Refreshing the data
 
-Run `./tools/setup.sh` again — it picks up anything missing. To move to newer library editions, update the file names in `tools/fetch_library.sh` (see [download.kiwix.org/zim](https://download.kiwix.org/zim/)) and re-run. `tools/fetch_map.sh` always fetches the latest Protomaps build.
+Open **Data** to add libraries you skipped or retry anything that failed. To move to newer library editions, update the file names in `server/setup.go` (see [download.kiwix.org/zim](https://download.kiwix.org/zim/)), rebuild, and delete the old `.zim` from the data folder. The map always comes from the latest Protomaps build.
+
+Command-line equivalents, for developers:
 
 | Script | What it does |
 |---|---|
 | `tools/setup.sh` | Everything below, in order |
 | `tools/fetch_library.sh` | Downloads and checksum-verifies the Kiwix libraries |
 | `tools/fetch_map.sh` | Extracts the Ireland map and terrain |
-| `tools/build_data.py` | Builds the gazetteer and help-point layers from Overpass results |
+| `tools/build_data.py` | Rebuilds the bundled gazetteer and help-point layers (`web/appdata/`) from Overpass results |
 | `tools/fetch_guidance.py` | Snapshots the official guidance |
 | `tools/build_docs.py` | Page-level text index of every manual (PDFKit) |
 | `tools/build_cd3wd.py` | CD3WD catalogue with real titles and subjects |
@@ -179,9 +189,10 @@ Run `./tools/setup.sh` again — it picks up anything missing. To move to newer 
 
 ```
 mac/        native macOS shell (Swift) and build script
-server/     local engine (Go, no dependencies)
+server/     local engine and downloader (Go)
 web/        the app UI — index.html, app.js, library.js, guides, styles
-web/map/    offline map module (MapLibre, PMTiles, basemaps, contours, fonts, sprites, places & help points)
+web/map/    offline map module (MapLibre, PMTiles, basemaps, contours, fonts, sprites)
+web/appdata/ places gazetteer and help points (OpenStreetMap), shipped inside the app
 tools/      data download, indexing and verification scripts
 raw/        Overpass queries for places and help points
 ```
